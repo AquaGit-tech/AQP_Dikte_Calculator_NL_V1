@@ -257,11 +257,12 @@
 
         <div class="footer" id="footer"></div>
         <div class="footer footer-basis" id="footerBasis"></div>
+        <div class="footer footer-basis" id="footerAv"></div>
     </div>
 
     <script>
         // === Vertalingen (per taal ingevuld door de generator) ===
-        var T = {"lang": "nl", "locale": "nl-BE", "title": "Pleisterdikte Calculator", "resetAria": "Reset", "addAria": "Isolatietype toevoegen", "removeAria": "Verwijder", "clientPh": "Naam klant of adres werken", "ghOpp": "Totale oppervlakte", "phOpp": "Totaal oppervlak (m²)", "unitM2": "m²", "ghPleister": "Gipspleister", "phPleister": "Totaal aantal zakken (MP75/Snelband - 25kg)", "unitPleister": "x 25kg - MP75/Snelband", "ghXps": "XPS Isolatie", "phXps": "Aant. platen (1250×600)", "unitXps": "st - 1250×600mm", "phDikte": "Dikte (cm)", "unitCm": "cm", "ghEgal": "Egalisatie muur", "phEgal": "Totaal aantal zakken (Mixem Sub - 25kg)", "unitEgal": "x 25kg - Mixemsub", "resultLabel": "Gemiddelde Totaaldikte", "lblPleister": "Pleister, gemiddelde dikte:", "lblXps": "XPS, gemiddelde dikte:", "lblEgal": "Egalisatie, gemiddelde dikte:", "lblBijkomend": "Bijkomend, gemiddelde totaaldikte:", "footer": "Indicatief. Bijkomend = gemiddelde totaaldikte boven 2 cm.", "basisIntro": "Berekeningsbasis (Knauf TDS): ", "basisPleister": "gipspleister MP 75/Snelband 8,0 kg/m² per cm laagdikte (8,0 kg/m² bij 10 mm)", "basisEgal": "egalisatie MiXem Sub 16,53 kg/m² per cm laagdikte (24,8 kg/m² bij 15 mm)", "basisXps": "XPS-plaat 0,75 m²/plaat (1250×600 mm)"};
+        var T = {"lang": "nl", "locale": "nl-BE", "title": "Pleisterdikte Calculator", "resetAria": "Reset", "addAria": "Isolatietype toevoegen", "removeAria": "Verwijder", "clientPh": "Naam klant of adres werken", "ghOpp": "Totale oppervlakte", "phOpp": "Totaal oppervlak (m²)", "unitM2": "m²", "ghPleister": "Gipspleister", "phPleister": "Totaal aantal zakken (MP75/Snelband - 25kg)", "unitPleister": "x 25kg - MP75/Snelband", "ghXps": "XPS Isolatie", "phXps": "Aant. platen (1250×600)", "unitXps": "st - 1250×600mm", "phDikte": "Dikte (cm)", "unitCm": "cm", "ghEgal": "Egalisatie muur", "phEgal": "Totaal aantal zakken (Mixem Sub - 25kg)", "unitEgal": "x 25kg - Mixemsub", "resultLabel": "Gemiddelde Totaaldikte", "lblPleister": "Pleister, gemiddelde dikte:", "lblXps": "XPS, gemiddelde dikte:", "lblEgal": "Egalisatie, gemiddelde dikte:", "lblBijkomend": "Bijkomend, gemiddelde totaaldikte:", "footer": "Berekend op de werkelijk uitgevoerde hoeveelheden. Bijkomend = gemiddelde totaaldikte boven 2 cm.", "basisIntro": "Berekeningsbasis (Knauf TDS): ", "basisPleister": "gipspleister MP 75/Snelband 8,0 kg/m² per cm laagdikte (8,0 kg/m² bij 10 mm)", "basisEgal": "egalisatie MiXem Sub 16,53 kg/m² per cm laagdikte (24,8 kg/m² bij 15 mm)", "basisXps": "XPS-plaat 0,75 m²/plaat (1250×600 mm)", "avMeerkostPre": "Volgens de algemene voorwaarden (art. 5.04) wordt afwerking boven 2 cm aangerekend aan € 20,00/cm/m². Berekende meerkost bijkomende dikte: "};
 
         // Rekenconstanten - exact conform de Knauf TDS'en (geen afronding)
         var PLEISTER_KG_PER_MM_M2 = 8.0 / 10;     // Knauf MP 75 E EN Snelband: beide 8,0 kg/m2 bij 10mm -> 0,80 kg/mm/m2 (opbrengst exact 25/8,0 = 3,125 m2/zak). Zelfde verbruik => 1 constante voor beide.
@@ -270,6 +271,7 @@
         var XPS_OPPERVLAK_PER_PLAAT = 0.75;  // m2 (plaat 1250x600mm = 0,75 m2)
         var BIJKOMEND_DREMPEL_MM = 20;       // gemiddelde totaaldikte boven 20mm (= 2 cm) = bijkomend
         var MM_PER_CM = 10;                  // interne motor rekent in mm; weergave in cm
+        var AV_MEERKOST_PER_CM_M2 = 20;      // EUR per cm per m2 voor afwerking boven 2 cm (AV art. 5.04)
 
         var inputs = ['oppervlakte', 'zakkenPleister', 'zakkenEgalisatie'];
 
@@ -278,6 +280,7 @@
         }
         function round2(x) { return Math.round(x * 100) / 100; }          // afronden op 2 decimalen
         function cmTxt(v) { return nf(v, 2) + ' ' + T.unitCm; }            // v is reeds in cm (2 decimalen)
+        function euro(v) { return '€ ' + nf(v, 2); }                  // EUR-bedrag, 2 decimalen
 
         // Disclaimer-basis: enkel de daadwerkelijk gebruikte producten tonen
         function buildBasis(hasP, hasE, hasX) {
@@ -420,6 +423,7 @@
             document.getElementById('bijkomendeRow').style.display = 'none';
             document.getElementById('bijkomendeSeparator').style.display = 'none';
             document.getElementById('footerBasis').textContent = '';
+            document.getElementById('footerAv').textContent = '';
         }
 
         function calculate() {
@@ -441,6 +445,7 @@
             if (oppervlakte === 0) {
                 document.getElementById('resultValue').textContent = '--';
                 document.getElementById('breakdown').style.display = 'none';
+                document.getElementById('footerAv').textContent = '';
                 return;
             }
 
@@ -483,9 +488,16 @@
                 document.getElementById('bijkomendeDikte').textContent = cmTxt(bijkomendCm);
                 document.getElementById('bijkomendeRow').style.display = 'flex';
                 document.getElementById('bijkomendeSeparator').style.display = 'block';
+                // AV-meerkost bijkomende dikte (enkel NL: T.avMeerkostPre aanwezig). cm x EUR/cm/m2 x m2, met expliciete som
+                var avBedrag = round2(bijkomendCm * AV_MEERKOST_PER_CM_M2 * oppervlakte);
+                document.getElementById('footerAv').textContent = T.avMeerkostPre
+                    ? (T.avMeerkostPre + nf(bijkomendCm, 2) + ' ' + T.unitCm + ' × ' + euro(AV_MEERKOST_PER_CM_M2)
+                       + ' × ' + nf(oppervlakte, 2) + ' ' + T.unitM2 + ' = ' + euro(avBedrag) + '.')
+                    : '';
             } else {
                 document.getElementById('bijkomendeRow').style.display = 'none';
                 document.getElementById('bijkomendeSeparator').style.display = 'none';
+                document.getElementById('footerAv').textContent = '';
             }
 
             document.getElementById('breakdown').style.display = 'block';
