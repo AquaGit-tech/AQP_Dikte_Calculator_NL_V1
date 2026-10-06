@@ -63,11 +63,19 @@
             padding: 0;
         }
 
-        .reset-btn:hover { background: #33B2D2; }
         .reset-btn svg { width: 16px; height: 16px; stroke: #33B2D2; transition: stroke 0.3s; }
-        .reset-btn:hover svg { stroke: white; }
         .save-btn { right: 32px; }
-        .save-btn:disabled { opacity: 0.4; cursor: default; }
+        .save-btn:disabled { cursor: default; }
+        button { -webkit-tap-highlight-color: transparent; }
+        /* Hover enkel met muis: op touch blijft :hover anders "hangen" (knop blijft blauw) */
+        @media (hover: hover) and (pointer: fine) {
+            .reset-btn:hover { background: #33B2D2; }
+            .reset-btn:hover svg { stroke: white; }
+            .add-btn:hover { background: #33B2D2; color: #fff; }
+        }
+        /* Tikfeedback: 0,5 s gevuld (zonder infaden), daarna terug naar basis */
+        .reset-btn.is-pressed, .add-btn.is-pressed { background: #33B2D2; color: #fff; transition: none; }
+        .reset-btn.is-pressed svg { stroke: white; transition: none; }
 
         /* Fallback (iOS): voorbeeld + opslaan-knop met verse tik voor het deelmenu */
         .save-overlay {
@@ -161,8 +169,8 @@
             background: transparent; border: 2px solid #33B2D2; width: 26px; height: 26px;
             border-radius: 50%; cursor: pointer; color: #33B2D2; font-size: 20px; line-height: 1;
             display: flex; align-items: center; justify-content: center; padding: 0; flex: 0 0 auto;
+            transition: all 0.3s;
         }
-        .add-btn:hover { background: #33B2D2; color: #fff; }
         .xps-row { margin-bottom: 4px; }
         .xps-row:last-child { margin-bottom: 0; }
         .xps-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
@@ -596,16 +604,18 @@
             downloadBlob(blob, naam);
         }
 
-        function saveJpg() {
-            if (typeof html2canvas !== 'function') { alert(T.saveFail); return; }
-            var btn = document.getElementById('saveBtn');
-            btn.disabled = true;
-            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-            var naam = bestandsnaam();
-            html2canvas(document.querySelector('.container'), {
-                backgroundColor: '#ffffff',
-                scale: Math.max(2, Math.min(3, window.devicePixelRatio || 1)),
+        var RAND_PX = 5;   // zwarte rand rond de JPG (CSS-px, schaalt mee)
+
+        function renderKaart(scale) {
+            var el = document.querySelector('.container');
+            return html2canvas(el, {
+                backgroundColor: null,   // transparant buiten de afgeronde hoeken -> zwart in de rand
+                scale: scale,
                 logging: false,
+                // volledige pagina als venster: anders knipt html2canvas op gsm af wat buiten beeld valt
+                scrollX: 0, scrollY: 0,
+                windowWidth: document.documentElement.clientWidth,
+                windowHeight: Math.max(document.documentElement.scrollHeight, el.offsetTop + el.offsetHeight, window.innerHeight),
                 // knoppen horen niet in het beeld
                 ignoreElements: function(el) {
                     return el.tagName === 'BUTTON';
@@ -614,7 +624,11 @@
                 onclone: function(doc) {
                     // lege velden blanco (html2canvas tekent de placeholder anders als zwarte waarde)
                     doc.querySelectorAll('input').forEach(function(inp) { if (!inp.value) inp.placeholder = ''; });
-                    doc.querySelectorAll('select').forEach(function(sel) { sel.style.backgroundImage = 'none'; });
+                    doc.querySelectorAll('select').forEach(function(sel) {
+                        sel.style.backgroundImage = 'none';
+                        if (sel.value === '0') sel.options[0].textContent = '';
+                    });
+                    doc.querySelector('.container').style.boxShadow = 'none';
                     // klant/adres volledig tonen: input -> tekstblok dat mag afbreken
                     var k = doc.getElementById('klantInfo');
                     if (k && k.value) {
@@ -627,17 +641,76 @@
                         k.parentNode.replaceChild(div, k);
                     }
                 }
-            }).then(function(canvas) {
-                canvas.toBlob(function(blob) {
-                    btn.disabled = false;
-                    if (!blob) { alert(T.saveFail); return; }
-                    deliver(blob, naam);
-                }, 'image/jpeg', 0.92);
-            }).catch(function() {
-                btn.disabled = false;
-                alert(T.saveFail);
             });
         }
+
+        function saveJpg() {
+            if (typeof html2canvas !== 'function') { alert(T.saveFail); return; }
+            var btn = document.getElementById('saveBtn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            // Toetsenbord eerst laten sluiten: anders verspringt de layout tijdens het renderen
+            var act = document.activeElement;
+            var hadKeyboard = act && (act.tagName === 'INPUT' || act.tagName === 'SELECT');
+            if (act && act.blur) act.blur();
+            var naam = bestandsnaam();
+            var scale = Math.max(2, Math.min(3, window.devicePixelRatio || 1));
+            var sx = window.scrollX, sy = window.scrollY;
+            setTimeout(function() {
+                window.scrollTo(0, 0);
+                renderKaart(scale).then(function(kaart) {
+                    window.scrollTo(sx, sy);
+                    // kaart met afgeronde hoeken op zwarte rand
+                    var b = Math.round(RAND_PX * scale);
+                    var out = document.createElement('canvas');
+                    out.width = kaart.width + 2 * b;
+                    out.height = kaart.height + 2 * b;
+                    var ctx = out.getContext('2d');
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, out.width, out.height);
+                    ctx.drawImage(kaart, b, b);
+                    out.toBlob(function(blob) {
+                        btn.disabled = false;
+                        if (!blob) { alert(T.saveFail); return; }
+                        deliver(blob, naam);
+                    }, 'image/jpeg', 0.92);
+                }).catch(function() {
+                    window.scrollTo(sx, sy);
+                    btn.disabled = false;
+                    alert(T.saveFail);
+                });
+            }, hadKeyboard ? 350 : 0);
+        }
+
+        // === Tikfeedback: haptisch + knop 0,5 s gevuld, daarna terug naar basis ===
+        var hapticLabel = null;
+        function haptic() {
+            try {
+                if (navigator.vibrate) { navigator.vibrate(20); return; }
+                // iOS (Safari 18+) kent geen vibrate; een tik op het label van een switch-checkbox geeft wel een haptische tik
+                if (!hapticLabel) {
+                    var sw = document.createElement('input');
+                    sw.type = 'checkbox'; sw.id = 'hapticSwitch'; sw.setAttribute('switch', '');
+                    sw.setAttribute('aria-hidden', 'true'); sw.tabIndex = -1; sw.style.display = 'none';
+                    hapticLabel = document.createElement('label');
+                    hapticLabel.htmlFor = 'hapticSwitch'; hapticLabel.style.display = 'none';
+                    document.body.appendChild(sw); document.body.appendChild(hapticLabel);
+                }
+                hapticLabel.click();
+            } catch (e) {}
+        }
+
+        function tikFeedback(btn) {
+            haptic();
+            btn.classList.add('is-pressed');
+            clearTimeout(btn._pressT);
+            btn._pressT = setTimeout(function() { btn.classList.remove('is-pressed'); btn.blur(); }, 500);
+        }
+
+        ['saveBtn', 'resetBtn', 'addXpsBtn'].forEach(function(id) {
+            var btn = document.getElementById(id);
+            btn.addEventListener('click', function() { tikFeedback(btn); });
+        });
 
         document.getElementById('saveBtn').addEventListener('click', saveJpg);
 
