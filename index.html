@@ -608,14 +608,16 @@
 
         function renderKaart(scale) {
             var el = document.querySelector('.container');
+            var kaartBreedte = el.getBoundingClientRect().width;
             return html2canvas(el, {
                 backgroundColor: null,   // transparant buiten de afgeronde hoeken -> zwart in de rand
                 scale: scale,
                 logging: false,
-                // volledige pagina als venster: anders knipt html2canvas op gsm af wat buiten beeld valt
+                // Kopie staat vast linksboven (zie onclone) en wordt niet gescrolld: positie op het scherm,
+                // scroll, centreren en werkbalken van de gsm-browser spelen geen rol meer (anders boven afgeknipt)
                 scrollX: 0, scrollY: 0,
                 windowWidth: document.documentElement.clientWidth,
-                windowHeight: Math.max(document.documentElement.scrollHeight, el.offsetTop + el.offsetHeight, window.innerHeight),
+                windowHeight: Math.max(document.documentElement.scrollHeight, el.offsetHeight + 400, window.innerHeight),
                 // knoppen horen niet in het beeld
                 ignoreElements: function(el) {
                     return el.tagName === 'BUTTON';
@@ -628,7 +630,11 @@
                         sel.style.backgroundImage = 'none';
                         if (sel.value === '0') sel.options[0].textContent = '';
                     });
-                    doc.querySelector('.container').style.boxShadow = 'none';
+                    // kaart vast op (0,0) in een gewone blok-layout, zelfde breedte als op het scherm
+                    var root = doc.documentElement, body = doc.body, kaart = doc.querySelector('.container');
+                    root.style.cssText += ';margin:0;padding:0;height:auto;min-height:0;overflow:visible;';
+                    body.style.cssText += ';margin:0;padding:0;display:block;height:auto;min-height:0;overflow:visible;';
+                    kaart.style.cssText += ';position:absolute;left:0;top:0;margin:0;width:' + kaartBreedte + 'px;max-width:none;box-shadow:none;';
                     // klant/adres volledig tonen: input -> tekstblok dat mag afbreken
                     var k = doc.getElementById('klantInfo');
                     if (k && k.value) {
@@ -655,11 +661,8 @@
             if (act && act.blur) act.blur();
             var naam = bestandsnaam();
             var scale = Math.max(2, Math.min(3, window.devicePixelRatio || 1));
-            var sx = window.scrollX, sy = window.scrollY;
             setTimeout(function() {
-                window.scrollTo(0, 0);
                 renderKaart(scale).then(function(kaart) {
-                    window.scrollTo(sx, sy);
                     // kaart met afgeronde hoeken op zwarte rand
                     var b = Math.round(RAND_PX * scale);
                     var out = document.createElement('canvas');
@@ -675,7 +678,6 @@
                         deliver(blob, naam);
                     }, 'image/jpeg', 0.92);
                 }).catch(function() {
-                    window.scrollTo(sx, sy);
                     btn.disabled = false;
                     alert(T.saveFail);
                 });
