@@ -604,7 +604,7 @@
             downloadBlob(blob, naam);
         }
 
-        var RAND_PX = 5;   // zwarte rand rond de JPG (CSS-px, schaalt mee)
+        var RAND_PX = 5;   // zwarte rand rond de JPG, in echte beeldpixels (schaalt niet mee)
 
         function renderKaart(scale) {
             var el = document.querySelector('.container');
@@ -664,7 +664,7 @@
             setTimeout(function() {
                 renderKaart(scale).then(function(kaart) {
                     // kaart met afgeronde hoeken op zwarte rand
-                    var b = Math.round(RAND_PX * scale);
+                    var b = RAND_PX;
                     var out = document.createElement('canvas');
                     out.width = kaart.width + 2 * b;
                     out.height = kaart.height + 2 * b;
