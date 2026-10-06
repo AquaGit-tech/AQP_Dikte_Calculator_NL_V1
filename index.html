@@ -66,13 +66,28 @@
         .reset-btn:hover { background: #33B2D2; }
         .reset-btn svg { width: 16px; height: 16px; stroke: #33B2D2; transition: stroke 0.3s; }
         .reset-btn:hover svg { stroke: white; }
+        .save-btn { right: 32px; }
+        .save-btn:disabled { opacity: 0.4; cursor: default; }
+
+        /* Fallback (iOS): voorbeeld + opslaan-knop met verse tik voor het deelmenu */
+        .save-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10;
+            display: none; flex-direction: column; align-items: center; justify-content: center; padding: 12px;
+        }
+        .save-overlay img { max-width: 100%; max-height: 75vh; border-radius: 8px; }
+        .save-overlay-btns { display: flex; gap: 8px; margin-top: 10px; }
+        .save-overlay button {
+            background: #33B2D2; color: white; border: none; border-radius: 8px;
+            font-size: 17px; font-weight: 600; padding: 10px 22px; cursor: pointer;
+        }
+        .save-overlay button.secondary { background: transparent; border: 2px solid #33B2D2; }
 
         h1 {
             color: #33B2D2;
             font-size: clamp(18px, 5vw, 24px);
             margin-bottom: 0;
             padding-left: 6px;
-            padding-right: 35px;
+            padding-right: 65px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -179,6 +194,13 @@
     <div class="container">
         <div class="header">
             <h1 id="h1"></h1>
+            <button class="reset-btn save-btn" id="saveBtn" type="button" aria-label="Save">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3v12"></path>
+                    <path d="M7 10l5 5 5-5"></path>
+                    <path d="M5 21h14"></path>
+                </svg>
+            </button>
             <button class="reset-btn" id="resetBtn" onclick="resetCalculator()" aria-label="Reset">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
@@ -260,9 +282,18 @@
         <div class="footer footer-basis" id="footerAv"></div>
     </div>
 
+    <div class="save-overlay" id="saveOverlay">
+        <img id="saveOverlayImg" alt="">
+        <div class="save-overlay-btns">
+            <button type="button" id="saveOverlayShare"></button>
+            <button type="button" class="secondary" id="saveOverlayClose"></button>
+        </div>
+    </div>
+
+    <script src="html2canvas.min.js"></script>
     <script>
         // === Vertalingen (per taal ingevuld door de generator) ===
-        var T = {"lang": "nl", "locale": "nl-BE", "title": "Pleisterdikte Calculator", "resetAria": "Reset", "addAria": "Isolatietype toevoegen", "removeAria": "Verwijder", "clientPh": "Naam klant of adres werken", "ghOpp": "Totale oppervlakte", "phOpp": "Totaal oppervlak (m²)", "unitM2": "m²", "ghPleister": "Gipspleister", "phPleister": "Totaal aantal zakken (MP75/Snelband - 25kg)", "unitPleister": "x 25kg - MP75/Snelband", "ghXps": "XPS Isolatie", "phXps": "Aant. platen (1250×600)", "unitXps": "st - 1250×600mm", "phDikte": "Dikte (cm)", "unitCm": "cm", "ghEgal": "Egalisatie muur", "phEgal": "Totaal aantal zakken (Mixem Sub - 25kg)", "unitEgal": "x 25kg - Mixemsub", "resultLabel": "Gemiddelde Totaaldikte", "lblPleister": "Pleister, gemiddelde dikte:", "lblXps": "XPS, gemiddelde dikte:", "lblEgal": "Egalisatie, gemiddelde dikte:", "lblBijkomend": "Bijkomend, gemiddelde totaaldikte:", "footer": "Berekend op de werkelijk uitgevoerde hoeveelheden. Bijkomend = gemiddelde totaaldikte boven 2 cm.", "basisIntro": "Berekeningsbasis (Knauf TDS): ", "basisPleister": "gipspleister MP 75/Snelband 8,0 kg/m² per cm laagdikte (8,0 kg/m² bij 10 mm)", "basisEgal": "egalisatie MiXem Sub 16,53 kg/m² per cm laagdikte (24,8 kg/m² bij 15 mm)", "basisXps": "XPS-plaat 0,75 m²/plaat (1250×600 mm)", "avMeerkostPre": "Volgens de algemene voorwaarden (art. 5.04) wordt afwerking boven 2 cm aangerekend aan € 20,00/cm/m². Berekende meerkost bijkomende dikte: "};
+        var T = {"lang": "nl", "locale": "nl-BE", "title": "Pleisterdikte Calculator", "resetAria": "Reset", "addAria": "Isolatietype toevoegen", "removeAria": "Verwijder", "clientPh": "Naam klant of adres werken", "ghOpp": "Totale oppervlakte", "phOpp": "Totaal oppervlak (m²)", "unitM2": "m²", "ghPleister": "Gipspleister", "phPleister": "Totaal aantal zakken (MP75/Snelband - 25kg)", "unitPleister": "x 25kg - MP75/Snelband", "ghXps": "XPS Isolatie", "phXps": "Aant. platen (1250×600)", "unitXps": "st - 1250×600mm", "phDikte": "Dikte (cm)", "unitCm": "cm", "ghEgal": "Egalisatie muur", "phEgal": "Totaal aantal zakken (Mixem Sub - 25kg)", "unitEgal": "x 25kg - Mixemsub", "resultLabel": "Gemiddelde Totaaldikte", "lblPleister": "Pleister, gemiddelde dikte:", "lblXps": "XPS, gemiddelde dikte:", "lblEgal": "Egalisatie, gemiddelde dikte:", "lblBijkomend": "Bijkomend, gemiddelde totaaldikte:", "footer": "Berekend op de werkelijk uitgevoerde hoeveelheden. Bijkomend = gemiddelde totaaldikte boven 2 cm.", "basisIntro": "Berekeningsbasis (Knauf TDS): ", "basisPleister": "gipspleister MP 75/Snelband 8,0 kg/m² per cm laagdikte (8,0 kg/m² bij 10 mm)", "basisEgal": "egalisatie MiXem Sub 16,53 kg/m² per cm laagdikte (24,8 kg/m² bij 15 mm)", "basisXps": "XPS-plaat 0,75 m²/plaat (1250×600 mm)", "avMeerkostPre": "Volgens de algemene voorwaarden (art. 5.04) wordt afwerking boven 2 cm aangerekend aan € 20,00/cm/m². Berekende meerkost bijkomende dikte: ", "saveAria": "Opslaan als JPG", "saveBtn": "Opslaan", "closeBtn": "Sluiten", "saveFail": "Opslaan mislukt. Probeer opnieuw."};
 
         // Rekenconstanten - exact conform de Knauf TDS'en (geen afronding)
         var PLEISTER_KG_PER_MM_M2 = 8.0 / 10;     // Knauf MP 75 E EN Snelband: beide 8,0 kg/m2 bij 10mm -> 0,80 kg/mm/m2 (opbrengst exact 25/8,0 = 3,125 m2/zak). Zelfde verbruik => 1 constante voor beide.
@@ -403,6 +434,10 @@
             setText('lbl-egal', T.lblEgal);
             setText('lbl-bijkomend', T.lblBijkomend);
             setText('footer', T.footer);
+            document.getElementById('saveBtn').setAttribute('aria-label', T.saveAria);
+            document.getElementById('saveBtn').title = T.saveAria;
+            setText('saveOverlayShare', T.saveBtn);
+            setText('saveOverlayClose', T.closeBtn);
             // footerBasis wordt dynamisch gevuld in calculate() (enkel gebruikte producten)
         }
 
@@ -502,6 +537,109 @@
 
             document.getElementById('breakdown').style.display = 'block';
         }
+
+        // === Scherm opslaan als JPG (bestandsnaam = klant/adres-veld) ===
+        function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+        function bestandsnaam() {
+            // Tekens die in bestandsnamen niet mogen weg; \x-escapes (niet \u) zodat de UTF8-conversie ze laat staan
+            var naam = document.getElementById('klantInfo').value
+                .replace(/[\\\/]+/g, '-')
+                .replace(/[:*?"<>|\x00-\x1F]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/^[\s.]+|[\s.]+$/g, '');
+            if (!naam) {
+                var d = new Date();
+                naam = T.title + ' ' + d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+            }
+            return naam.slice(0, 120) + '.jpg';
+        }
+
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        function downloadBlob(blob, naam) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url; a.download = naam;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+        }
+
+        function shareFile(file) { return navigator.share({ files: [file], title: file.name }); }
+
+        // iOS: deelmenu ("Bewaar afbeelding" / "Bewaar in Bestanden"). Verlopen tik na het renderen -> overlay met verse tik.
+        function showOverlay(blob, file) {
+            var url = URL.createObjectURL(blob);
+            var ov = document.getElementById('saveOverlay');
+            document.getElementById('saveOverlayImg').src = url;
+            document.getElementById('saveOverlayShare').onclick = function() {
+                shareFile(file).catch(function(err) { if (err && err.name !== 'AbortError') downloadBlob(blob, file.name); });
+            };
+            document.getElementById('saveOverlayClose').onclick = function() {
+                ov.style.display = 'none'; URL.revokeObjectURL(url);
+            };
+            ov.style.display = 'flex';
+        }
+
+        function deliver(blob, naam) {
+            var file = null;
+            try { file = new File([blob], naam, { type: 'image/jpeg' }); } catch (e) {}
+            if (isIOS() && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+                shareFile(file).catch(function(err) {
+                    if (err && err.name === 'AbortError') return;
+                    showOverlay(blob, file);
+                });
+                return;
+            }
+            downloadBlob(blob, naam);
+        }
+
+        function saveJpg() {
+            if (typeof html2canvas !== 'function') { alert(T.saveFail); return; }
+            var btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+            var naam = bestandsnaam();
+            html2canvas(document.querySelector('.container'), {
+                backgroundColor: '#ffffff',
+                scale: Math.max(2, Math.min(3, window.devicePixelRatio || 1)),
+                logging: false,
+                // knoppen horen niet in het beeld
+                ignoreElements: function(el) {
+                    return el.tagName === 'BUTTON';
+                },
+                // Alleen de kopie voor het beeld aanpassen, niet het scherm zelf
+                onclone: function(doc) {
+                    // lege velden blanco (html2canvas tekent de placeholder anders als zwarte waarde)
+                    doc.querySelectorAll('input').forEach(function(inp) { if (!inp.value) inp.placeholder = ''; });
+                    doc.querySelectorAll('select').forEach(function(sel) { sel.style.backgroundImage = 'none'; });
+                    // klant/adres volledig tonen: input -> tekstblok dat mag afbreken
+                    var k = doc.getElementById('klantInfo');
+                    if (k && k.value) {
+                        var cs = window.getComputedStyle(document.getElementById('klantInfo'));
+                        var div = doc.createElement('div');
+                        div.textContent = k.value;
+                        div.style.cssText = 'border:2px solid #e0e0e0;border-radius:8px;background:#fff;padding:8px 8px 8px 13px;'
+                            + 'min-height:42px;font-weight:600;white-space:normal;word-break:break-word;font-size:' + cs.fontSize
+                            + ';font-family:' + cs.fontFamily + ';line-height:1.3;';
+                        k.parentNode.replaceChild(div, k);
+                    }
+                }
+            }).then(function(canvas) {
+                canvas.toBlob(function(blob) {
+                    btn.disabled = false;
+                    if (!blob) { alert(T.saveFail); return; }
+                    deliver(blob, naam);
+                }, 'image/jpeg', 0.92);
+            }).catch(function() {
+                btn.disabled = false;
+                alert(T.saveFail);
+            });
+        }
+
+        document.getElementById('saveBtn').addEventListener('click', saveJpg);
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
